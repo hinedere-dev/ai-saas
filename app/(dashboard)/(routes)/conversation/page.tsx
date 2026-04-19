@@ -5,11 +5,6 @@ import axios from "axios";
 import { MessageSquare } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-
-type Message = {
-  role: "user" | "assistant";
-  content: string;
-};
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 
@@ -22,10 +17,14 @@ import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { UserAvatar } from "@/components/user-avatar";
 import { cn } from "@/lib/utils";
-
 import useProModal from "@/hooks/use-pro-modal";
 import { toast } from "react-hot-toast";
 import { formSchema } from "./constants";
+
+type Message = {
+  role: "user" | "assistant";
+  content: string;
+};
 
 const ConversationPage = () => {
   const router = useRouter();
@@ -34,30 +33,21 @@ const ConversationPage = () => {
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      prompt: "",
-    },
+    defaultValues: { prompt: "" },
   });
 
   const isLoading = form.formState.isSubmitting;
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    console.log(values);
     try {
-      const userMessage: Message = {
-        role: "user",
-        content: values.prompt,
-      };
+      const userMessage: Message = { role: "user", content: values.prompt };
       const newMessages = [...messages, userMessage];
 
-      const response = await axios.post("/api/conversation", {
-        messages: newMessages,
-      });
+      const response = await axios.post("/api/conversation", { messages: newMessages });
 
       setMessages((current) => [...current, userMessage, response.data]);
       form.reset();
     } catch (error: any) {
-      console.log(error);
       if (error?.response?.status === 403) {
         proModal.onOpen();
       } else {
@@ -72,46 +62,44 @@ const ConversationPage = () => {
     <div>
       <Heading
         title="Conversation"
-        description="Our most advanced AI conversation model."
+        description="Ask me anything — I'm here to help."
         icon={MessageSquare}
         iconColor="text-violet-500"
         bgColor="bg-violet-500/10"
       />
       <div className="px-4 lg:px-8">
-        <div>
-          <Form {...form}>
-            <form
-              onSubmit={form.handleSubmit(onSubmit)}
-              className="rounded-lg border w-full p-4 px-3 md:px-6 focus-within:shadow-sm grid grid-cols-12 gap-2"
-            >
-              <FormField
-                name="prompt"
-                render={({ field }) => (
-                  <FormItem className="col-span-12 lg:col-span-10">
-                    <FormControl className="m-0 p-0">
-                      <Input
-                        {...field}
-                        placeholder="Start typing here..."
-                        className="border-0 outline-none focus-visible:ring-0 focus-visible:ring-transparent"
-                        disabled={isLoading}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <Button className="col-span-12 lg:col-span-2 w-full" disabled={isLoading}>
-                Generate
-              </Button>
-            </form>
-          </Form>
-        </div>
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="rounded-lg border w-full p-4 px-3 md:px-6 focus-within:shadow-sm grid grid-cols-12 gap-2"
+          >
+            <FormField
+              name="prompt"
+              render={({ field }) => (
+                <FormItem className="col-span-12 lg:col-span-10">
+                  <FormControl className="m-0 p-0">
+                    <Input
+                      {...field}
+                      placeholder="Ask me anything..."
+                      className="border-0 outline-none focus-visible:ring-0 focus-visible:ring-transparent"
+                      disabled={isLoading}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+            <Button className="col-span-12 lg:col-span-2 w-full" disabled={isLoading}>
+              Send
+            </Button>
+          </form>
+        </Form>
         <div className="space-y-4 mt-4">
           {isLoading && (
             <div className="p-8 rounded-lg w-full flex items-center justify-center bg-muted">
               <Loader />
             </div>
           )}
-          {messages.length === 0 && !isLoading && <Empty label="Start typing to have a conversation." />}
+          {messages.length === 0 && !isLoading && <Empty label="Start a conversation above." />}
           <div className="flex flex-col-reverse gap-y-4">
             {messages.map((message, index) => (
               <div

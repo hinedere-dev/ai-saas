@@ -5,9 +5,11 @@ import Anthropic from "@anthropic-ai/sdk";
 import { checkApiLimit, increaseApiLimit } from "@/lib/api-limit";
 import { checkSubscription } from "@/lib/subscription";
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+const SYSTEM_PROMPT =
+  "You are a helpful, knowledgeable AI assistant. " +
+  "Provide clear, accurate, and concise responses. Be friendly and professional.";
 
 export async function POST(req: Request) {
   try {
@@ -37,7 +39,7 @@ export async function POST(req: Request) {
     const response = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 1024,
-      system: "You are a helpful, knowledgeable AI assistant. Provide clear, accurate, and concise responses. Be friendly and professional.",
+      system: SYSTEM_PROMPT,
       messages: messages.map((m: { role: string; content: string }) => ({
         role: m.role as "user" | "assistant",
         content: m.content,
