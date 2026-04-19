@@ -1,15 +1,13 @@
 import { auth } from "@clerk/nextjs";
 import { NextResponse } from "next/server";
-import { Configuration, OpenAIApi } from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 
 import { checkApiLimit, increaseApiLimit } from "@/lib/api-limit";
 import { checkSubscription } from "@/lib/subscription";
 
-const configuration = new Configuration({
-  apiKey: process.env.OPENAI_API_KEY,
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
 });
-
-const openAi = new OpenAIApi(configuration);
 
 export async function POST(req: Request) {
   try {
@@ -21,8 +19,8 @@ export async function POST(req: Request) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    if (!configuration) {
-      return new NextResponse("OpenAI API Key not configured", { status: 500 });
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return new NextResponse("Anthropic API Key not configured", { status: 500 });
     }
 
     if (!messages) {
@@ -36,16 +34,22 @@ export async function POST(req: Request) {
       return new NextResponse("API Limit Exceeded", { status: 403 });
     }
 
-    const response = await openAi.createChatCompletion({
-      model: "gpt-3.5-turbo",
-      messages,
+    const response = await anthropic.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 1024,
+      system: "You are a helpful, knowledgeable AI assistant. Provide clear, accurate, and concise responses. Be friendly and professional.",
+      messages: messages.map((m: { role: string; content: string }) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      })),
     });
 
     if (!isPro) {
       await increaseApiLimit();
     }
 
-    return NextResponse.json(response.data.choices[0].message, { status: 200 });
+    const text = response.content[0].type === "text" ? response.content[0].text : "";
+    return NextResponse.json({ role: "assistant", content: text }, { status: 200 });
   } catch (error) {
     console.log("[CONVERSATION_ERROR]", error);
     return new NextResponse("Internal Server Error", { status: 500 });

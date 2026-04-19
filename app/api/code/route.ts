@@ -2,18 +2,18 @@ import { checkApiLimit, increaseApiLimit } from "@/lib/api-limit";
 import { checkSubscription } from "@/lib/subscription";
 import { auth } from "@clerk/nextjs";
 import { NextResponse } from "next/server";
-import { ChatCompletionRequestMessage, Configuration, OpenAIApi } from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 
-const configuration = new Configuration({
-  apiKey: process.env.OPENAI_API_KEY,
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-const openAi = new OpenAIApi(configuration);
-
-const instructionMessage: ChatCompletionRequestMessage = {
-  role: "system",
-  content: "You are a code generator. You must answer only in markdown code snippets. Use code comments for explanations.",
-};
+const SYSTEM_PROMPT =
+  "You are an expert software engineer and code assistant. " +
+  "Always respond with clean, efficient, and well-documented code. " +
+  "Use markdown code blocks with the appropriate language identifier (e.g. ```python, ```typescript). " +
+  "Add brief inline comments to explain non-obvious logic. " +
+  "If the user asks a question rather than requesting code, answer concisely before showing any code example.";
 
 export async function POST(req: Request) {
   try {
@@ -25,8 +25,8 @@ export async function POST(req: Request) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    if (!configuration) {
-      return new NextResponse("OpenAI API Key not configured", { status: 500 });
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return new NextResponse("Anthropic API Key not configured", { status: 500 });
     }
 
     if (!messages) {
@@ -40,16 +40,22 @@ export async function POST(req: Request) {
       return new NextResponse("API Limit Exceeded", { status: 403 });
     }
 
-    const response = await openAi.createChatCompletion({
-      model: "gpt-3.5-turbo",
-      messages: [instructionMessage, ...messages],
+    const response = await anthropic.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 2048,
+      system: SYSTEM_PROMPT,
+      messages: messages.map((m: { role: string; content: string }) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      })),
     });
 
     if (!isPro) {
       await increaseApiLimit();
     }
 
-    return NextResponse.json(response.data.choices[0].message, { status: 200 });
+    const text = response.content[0].type === "text" ? response.content[0].text : "";
+    return NextResponse.json({ role: "assistant", content: text }, { status: 200 });
   } catch (error) {
     console.log("[CODE_ERROR]", error);
     return new NextResponse("Internal Server Error", { status: 500 });
