@@ -43,7 +43,7 @@ To run AI-SaaS locally, follow these steps:
 1. **Clone the repository**:
 
 ```bash
-git clone https://github.com/ayusshrathore/ai-saas.git
+https://github.com/hinedere-dev/ai-saas.git
 cd ai-saas
 ```
 
